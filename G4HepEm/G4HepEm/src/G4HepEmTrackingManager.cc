@@ -50,6 +50,21 @@
 #include "G4Gamma.hh"
 #include "G4Positron.hh"
 
+#include "G4PhysicalConstants.hh"
+
+#include <algorithm>
+#include <cmath>
+
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+namespace {
+// The velocity of an e-/e+ with the given kinetic energy.
+G4double ElectronVelocity(G4double ekin) {
+  const G4double gamma = 1.0 + ekin / CLHEP::electron_mass_c2;
+  return CLHEP::c_light * std::sqrt(std::max(0.0, 1.0 - 1.0 / (gamma * gamma)));
+}
+}
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -749,6 +764,7 @@ bool G4HepEmTrackingManager::TrackElectron(G4Track *aTrack) {
     const double ekin = thePrimaryTrack->GetEKin();
     double edep = thePrimaryTrack->GetEnergyDeposit();
     postStepPoint.SetKineticEnergy(ekin);
+    postStepPoint.SetVelocity(ElectronVelocity(ekin));
     if (ekin <= 0.0) {
       aTrack->SetTrackStatus(fStopAndKill);
     }
@@ -1294,6 +1310,7 @@ void G4HepEmTrackingManager::StopAtTrackingCut(G4Track* aTrack, int g4IMC, bool 
   postStepPoint.SetStepStatus(fPostStepDoItProc);
   postStepPoint.SetProcessDefinedStep(proc);
   postStepPoint.SetKineticEnergy(0.0);
+  postStepPoint.SetVelocity(0.0);
   aTrack->SetTrackStatus(fStopAndKill);
   step.UpdateTrack();
 
