@@ -44,6 +44,10 @@
 #include "G4ProcessType.hh"
 #include "G4TransportationProcessType.hh"
 #include "G4UserLimits.hh"
+#include "G4Cerenkov.hh"
+#include "G4MaterialPropertiesTable.hh"
+#include "G4HepEmMath.hh"
+#include "G4HepEmElectronData.hh"
 #include "G4ProcessManager.hh"
 
 #include "G4RegionStore.hh"
@@ -127,6 +131,9 @@ G4HepEmTrackingManager::G4HepEmTrackingManager(G4int verbose) {
   // Init the step limiter processes of e-/e+
   fStepLimiterProcess[0] = nullptr;
   fStepLimiterProcess[1] = nullptr;
+  // Init the Cerenkov processes of e-/e+
+  fCerenkovProcess[0] = nullptr;
+  fCerenkovProcess[1] = nullptr;
 
   // Init the fast sim mamanger process ptrs of the 3 particles
   fFastSimProcess[0] = nullptr;
@@ -203,6 +210,8 @@ void G4HepEmTrackingManager::BuildPhysicsTable(const G4ParticleDefinition &part)
     InitNuclearProcesses(particleID);
     // Find the step limiter process if has been attached
     InitStepLimiter(particleID);
+    // Find the Cerenkov process if has been attached
+    InitCerenkov(particleID);
     // Find the fast simulation manager process for e- (if has been attached)
     InitFastSimRelated(particleID);
     // Find the ATLAS specific trans. rad. (XTR) process (if has been attached)
@@ -219,6 +228,8 @@ void G4HepEmTrackingManager::BuildPhysicsTable(const G4ParticleDefinition &part)
     InitNuclearProcesses(particleID);
     // Find the step limiter process if has been attached
     InitStepLimiter(particleID);
+    // Find the Cerenkov process if has been attached
+    InitCerenkov(particleID);
     // Find the fast simulation manager process for e+ (if has been attached)
     InitFastSimRelated(particleID);
     // Report extra process configuration
@@ -509,6 +520,16 @@ bool G4HepEmTrackingManager::TrackElectron(G4Track *aTrack) {
           limitingProc = stepLimiter;
         }
       }
+      G4Cerenkov* cerenkov = fCerenkovProcess[isElectron ? 0 : 1];
+      if (cerenkov != nullptr) {
+        const double cerenkovStep = CerenkovStepLimit(aTrack, hepEmIMC, isElectron, preStepLogEkin);
+        if (cerenkovStep < theElTrack->GetPStepLength()) {
+          theElTrack->SetPStepLength(cerenkovStep);
+          thePrimaryTrack->SetGStepLength(cerenkovStep);
+          thePrimaryTrack->SetWinnerProcessIndex(-3);
+          limitingProc = cerenkov;
+        }
+      }
     }
     // Remember which process was selected - MSC might limit the sub-steps.
     const int iDProc = thePrimaryTrack->GetWinnerProcessIndex();
@@ -697,6 +718,18 @@ bool G4HepEmTrackingManager::TrackElectron(G4Track *aTrack) {
     // (e.g. XTR) might need below in their DoIt
     step.SetStepLength(totalTruePathLength);
 
+    // Cerenkov photons along this step (if the Cerenkov process is attached).
+    // NOTE: G4Cerenkov's option to track the photons first (fSuspend) is ignored.
+    G4VParticleChange* particleChangeCerenkov = nullptr;
+    G4Cerenkov* cerenkovProc = fCerenkovProcess[isElectron ? 0 : 1];
+    if (cerenkovProc != nullptr && totalTruePathLength > 0.0 &&
+        lvol->GetMaterial()->GetMaterialPropertiesTable() != nullptr) {
+      // G4Cerenkov uses the post-step velocity after the continuous energy loss
+      postStepPoint.SetKineticEnergy(thePrimaryTrack->GetEKin());
+      postStepPoint.SetVelocity(ElectronVelocity(thePrimaryTrack->GetEKin()));
+      particleChangeCerenkov = cerenkovProc->PostStepDoIt(*aTrack, step);
+    }
+
     const G4VProcess *proc = nullptr;
     if (stopped) {
       // call annihilation for e+ !!!
@@ -819,6 +852,18 @@ bool G4HepEmTrackingManager::TrackElectron(G4Track *aTrack) {
         secondaries.push_back(secTrack);
       }
       particleChangeXTR->Clear();
+    }
+
+    // Stack the Cerenkov photons (if any)
+    if (particleChangeCerenkov != nullptr) {
+      const int numPhotons = particleChangeCerenkov->GetNumberOfSecondaries();
+      for (int i = 0; i < numPhotons; i++) {
+        G4Track *secTrack = particleChangeCerenkov->GetSecondary(i);
+        secTrack->SetCreatorProcess(cerenkovProc);
+        secTrack->SetWeight(aTrack->GetWeight());
+        secondaries.push_back(secTrack);
+      }
+      particleChangeCerenkov->Clear();
     }
 
     step.AddTotalEnergyDeposit(edep);
@@ -1562,6 +1607,79 @@ void G4HepEmTrackingManager::InitStepLimiter(int particleID) {
       break;
     }
   }
+}
+
+
+// Try to get the Cerenkov process for e- (0) or e+ (1)
+void G4HepEmTrackingManager::InitCerenkov(int particleID) {
+  G4ParticleDefinition* particleDef = particleID == 0 ? static_cast<G4ParticleDefinition*>(G4Electron::Definition()) : G4Positron::Definition();
+  fCerenkovProcess[particleID] = nullptr;
+  const G4ProcessVector* processVector = particleDef->GetProcessManager()->GetProcessList();
+  for (std::size_t ip=0; ip<processVector->entries(); ip++) {
+    if ((*processVector)[ip]->GetProcessSubType() == fCerenkov) {
+      fCerenkovProcess[particleID] = dynamic_cast<G4Cerenkov*>((*processVector)[ip]);
+      break;
+    }
+  }
+  if (fCerenkovProcess[particleID] != nullptr) {
+    // Geant4 does not build the tables of processes of particles with a tracking
+    // manager; build it here (it is built only once if shared with other particles)
+    fCerenkovProcess[particleID]->PreparePhysicsTable(*particleDef);
+    fCerenkovProcess[particleID]->BuildPhysicsTable(*particleDef);
+  }
+}
+
+
+double G4HepEmTrackingManager::CerenkovStepLimit(const G4Track* aTrack, int hepEmIMC, bool isElectron, double logEkin) {
+  const G4Material* material = aTrack->GetMaterial();
+  G4MaterialPropertiesTable* mpt = material->GetMaterialPropertiesTable();
+  G4MaterialPropertyVector* rindex = mpt != nullptr ? mpt->GetProperty(kRINDEX) : nullptr;
+  if (rindex == nullptr) {
+    return DBL_MAX;
+  }
+  const double betaMin = 1.0 / rindex->GetMaxValue();
+  if (betaMin >= 1.0) {
+    return DBL_MAX;
+  }
+  const G4DynamicParticle* dp = aTrack->GetDynamicParticle();
+  const double mass  = CLHEP::electron_mass_c2;
+  const double ekin  = dp->GetKineticEnergy();
+  const double beta  = dp->GetTotalMomentum() / dp->GetTotalEnergy();
+  const double gamma = dp->GetTotalEnergy() / mass;
+  const double gammaMin = 1.0 / std::sqrt(1.0 - betaMin * betaMin);
+  if (gamma < gammaMin) {
+    return DBL_MAX;
+  }
+  const G4HepEmData* hepEmData = fRunManager->GetHepEmData();
+  const G4HepEmElectronData* elData = isElectron ? hepEmData->fTheElectronData : hepEmData->fThePositronData;
+  const double ekinMin = mass * (gammaMin - 1.0);
+  const double range    = G4HepEmElectronManager::GetRestRange(elData, hepEmIMC, ekin, logEkin);
+  const double rangeMin = G4HepEmElectronManager::GetRestRange(elData, hepEmIMC, ekinMin, G4HepEmLog(ekinMin));
+  // as in G4Cerenkov: no limit if the particle would not move
+  double step = range - rangeMin;
+  if (step < G4ThreeVector::getTolerance()) {
+    return DBL_MAX;
+  }
+  double stepLimit = step;
+  G4Cerenkov* cerenkov = fCerenkovProcess[isElectron ? 0 : 1];
+  if (cerenkov->GetMaxNumPhotonsPerStep() > 0) {
+    const double meanNumPhotons = cerenkov->GetAverageNumberOfPhotons(dp->GetDefinition()->GetPDGCharge(), beta, material, rindex);
+    if (meanNumPhotons > 0.0) {
+      stepLimit = std::min(stepLimit, cerenkov->GetMaxNumPhotonsPerStep() / meanNumPhotons);
+    }
+  }
+  const double maxBetaChange = cerenkov->GetMaxBetaChangePerStep();
+  if (maxBetaChange > 0.0) {
+    const double dedx = G4HepEmElectronManager::GetRestDEDX(elData, hepEmIMC, ekin, logEkin);
+    const double deltaGamma = gamma - 1.0 / std::sqrt(1.0 - beta * beta * (1.0 - maxBetaChange) * (1.0 - maxBetaChange));
+    if (dedx > 0.0) {
+      step = mass * deltaGamma / dedx;
+      if (step > 0.0) {
+        stepLimit = std::min(stepLimit, step);
+      }
+    }
+  }
+  return stepLimit;
 }
 
 

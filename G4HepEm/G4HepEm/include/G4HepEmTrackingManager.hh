@@ -22,6 +22,8 @@ class G4HepEmConfig;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+class G4Cerenkov;
+
 class G4HepEmTrackingManager : public G4VTrackingManager {
 public:
   G4HepEmTrackingManager(G4int verbose=1);
@@ -123,6 +125,14 @@ private:
   // If attached, the e-/e+ step is limited by the G4UserLimits of the volume.
   void InitStepLimiter(int particleID);
 
+  // Finds the Cerenkov process of e- (0) or e+ (1), if any, and builds its table.
+  void InitCerenkov(int particleID);
+
+  // The step limit of the Cerenkov process for an e-/e+ track. Computed as in
+  // G4Cerenkov but from the G4HepEm range and dE/dx (G4Cerenkov takes them from
+  // the Geant4 e-/e+ energy loss tables, which are not built).
+  double CerenkovStepLimit(const G4Track* aTrack, int hepEmIMC, bool isElectron, double logEkin);
+
   // Checks if the particles has fast simulation maanger process attached and
   // stores in the local `fFastSimProcess` array (indexed by HepEm particle ID)
   void InitFastSimRelated(int particleID);
@@ -178,6 +188,9 @@ private:
 
   // Pointers to the step limiter processes of e- and e+ (if any)
   G4VProcess* fStepLimiterProcess[2];
+
+  // Pointers to the Cerenkov processes of e- and e+ (if any)
+  G4Cerenkov* fCerenkovProcess[2];
 
   // ATLAS XTR RELATED:
   // Fields to store ptrs to the ATLAS XTR (transition radiation) process and
