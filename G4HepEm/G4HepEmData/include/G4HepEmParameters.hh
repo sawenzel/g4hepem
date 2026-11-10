@@ -94,6 +94,13 @@ struct G4HepEmParameters {
   /** Flag to indicate if displacement should be calculated/applied in MSC. */
   bool   fIsMSCDisplacement = true;
 
+  /** Flag to also apply the per-region tracking cuts at the start of each step:
+    * a track at or below the cut of its current region is then stopped there in a
+    * zero-length step, as `G4UserSpecialCuts` does. This covers newborn secondaries
+    * and tracks entering a region with a higher cut. When `false`, the cuts are
+    * applied only after the energy loss (e-/e+) or interaction (gamma) of a step. */
+  bool   fIsTrackingCutAtStepStart = false;
+
 
   /** Number of detector regions */
   int fNumRegions = 0;
