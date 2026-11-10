@@ -1,5 +1,18 @@
 #include "G4HepEmTrackingManager.hh"
 
+#include "G4PhysicalConstants.hh"
+
+#include <algorithm>
+#include <cmath>
+
+namespace {
+// The velocity of an e-/e+ with the given kinetic energy.
+G4double ElectronVelocity(G4double ekin) {
+  const G4double gamma = 1.0 + ekin / CLHEP::electron_mass_c2;
+  return CLHEP::c_light * std::sqrt(std::max(0.0, 1.0 - 1.0 / (gamma * gamma)));
+}
+}
+
 #include "TrackingManagerHelper.hh"
 #include "G4HepEmWoodcockHelper.hh"
 
@@ -749,6 +762,7 @@ bool G4HepEmTrackingManager::TrackElectron(G4Track *aTrack) {
     const double ekin = thePrimaryTrack->GetEKin();
     double edep = thePrimaryTrack->GetEnergyDeposit();
     postStepPoint.SetKineticEnergy(ekin);
+    postStepPoint.SetVelocity(ElectronVelocity(ekin));
     if (ekin <= 0.0) {
       aTrack->SetTrackStatus(fStopAndKill);
     }
