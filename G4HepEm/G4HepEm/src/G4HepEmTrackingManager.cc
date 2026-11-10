@@ -177,6 +177,7 @@ G4int G4HepEmTrackingManager::GetWDTCoupleHepEmIndex(G4int regionId, G4int logic
 void G4HepEmTrackingManager::BuildPhysicsTable(const G4ParticleDefinition &part) {
   if (&part == G4Electron::Definition()) {
     int particleID = 0;
+    fConfig->UpdateRegions();
     fRunManager->Initialize(fRandomEngine, particleID, fConfig->GetG4HepEmParameters());
     // Find the electron-nuclear process if has been attached
     InitNuclearProcesses(particleID);
@@ -190,6 +191,7 @@ void G4HepEmTrackingManager::BuildPhysicsTable(const G4ParticleDefinition &part)
     }
   } else if (&part == G4Positron::Definition()) {
     int particleID = 1;
+    fConfig->UpdateRegions();
     fRunManager->Initialize(fRandomEngine, particleID, fConfig->GetG4HepEmParameters());
     // Find the positron-nuclear process if has been attached
     InitNuclearProcesses(particleID);
@@ -205,6 +207,7 @@ void G4HepEmTrackingManager::BuildPhysicsTable(const G4ParticleDefinition &part)
     }
   } else if (&part == G4Gamma::Definition()) {
     int particleID = 2;
+    fConfig->UpdateRegions();
     fRunManager->Initialize(fRandomEngine, particleID, fConfig->GetG4HepEmParameters());
     // Find the gamma-nuclear process if has been attached
     InitNuclearProcesses(particleID);

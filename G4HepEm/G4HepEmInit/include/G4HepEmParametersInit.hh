@@ -12,6 +12,8 @@ void InitHepEmRegionParameters(const struct G4HepEmParameters* hepEmPars, struct
 
 // Extends the per-region array to all regions in the G4RegionStore (regions created
 // after `InitHepEmParameters` get default values). Returns true if it was extended.
-bool ExtendHepEmRegionParameters(struct G4HepEmParameters* hepEmPars);
+// New regions are initialised from `defaults` if given, else from Geant4.
+bool ExtendHepEmRegionParameters(struct G4HepEmParameters* hepEmPars,
+                                 const struct G4HepEmRegionParmeters* defaults = nullptr);
 
 #endif // G4HepEmParamaters_HH

@@ -12,12 +12,15 @@ G4HepEmConfig::G4HepEmConfig() {
   fG4HepEmParameters = new G4HepEmParameters;
   fWDTEnergyLimit    = 0.2; // 200 keV by default
   InitHepEmParameters(fG4HepEmParameters);
+  fDefaultRegionParameters = new G4HepEmRegionParmeters;
+  InitHepEmRegionParameters(fG4HepEmParameters, *fDefaultRegionParameters);
 }
 
 
 G4HepEmConfig::~G4HepEmConfig() {
   FreeG4HepEmParameters(fG4HepEmParameters);
   delete fG4HepEmParameters;
+  delete fDefaultRegionParameters;
 }
 
 
@@ -46,6 +49,8 @@ void G4HepEmConfig::SetEnergyLossStepLimitFunctionParameters(G4double drRange, G
   }
 }
 void G4HepEmConfig::SetEnergyLossStepLimitFunctionParameters(G4double drRange, G4double finRange) {
+  fDefaultRegionParameters->fDRoverRange = drRange;
+  fDefaultRegionParameters->fFinalRange  = finRange;
   for (int i=0; i<fG4HepEmParameters->fNumRegions; ++i) {
     fG4HepEmParameters->fParametersPerRegion[i].fDRoverRange = drRange;
     fG4HepEmParameters->fParametersPerRegion[i].fFinalRange  = finRange;
@@ -71,6 +76,7 @@ void G4HepEmConfig::SetMSCRangeFactor(G4double val, const G4String& nameRegion) 
   }
 }
 void G4HepEmConfig::SetMSCRangeFactor(G4double val) {
+  fDefaultRegionParameters->fMSCRangeFactor = val;
   for (int i=0; i<fG4HepEmParameters->fNumRegions; ++i)
     fG4HepEmParameters->fParametersPerRegion[i].fMSCRangeFactor = val;
 }
@@ -92,6 +98,7 @@ void G4HepEmConfig::SetMSCSafetyFactor(G4double val, const G4String& nameRegion)
   }
 }
 void G4HepEmConfig::SetMSCSafetyFactor(G4double val) {
+  fDefaultRegionParameters->fMSCSafetyFactor = val;
   for (int i=0; i<fG4HepEmParameters->fNumRegions; ++i)
     fG4HepEmParameters->fParametersPerRegion[i].fMSCSafetyFactor = val;
 }
@@ -114,6 +121,7 @@ void G4HepEmConfig::SetEnergyLossFluctuation(G4bool val, const G4String& nameReg
   }
 }
 void G4HepEmConfig::SetEnergyLossFluctuation(G4bool val) {
+  fDefaultRegionParameters->fIsELossFluctuation = val;
   for (int i=0; i<fG4HepEmParameters->fNumRegions; ++i)
     fG4HepEmParameters->fParametersPerRegion[i].fIsELossFluctuation = val;
 }
@@ -136,6 +144,7 @@ void G4HepEmConfig::SetMinimalMSCStepLimit(G4bool val, const G4String& nameRegio
   }
 }
 void G4HepEmConfig::SetMinimalMSCStepLimit(G4bool val) {
+  fDefaultRegionParameters->fIsMSCMinimalStepLimit = val;
   for (int i=0; i<fG4HepEmParameters->fNumRegions; ++i)
     fG4HepEmParameters->fParametersPerRegion[i].fIsMSCMinimalStepLimit = val;
 }
@@ -158,6 +167,7 @@ void G4HepEmConfig::SetMultipleStepsInMSCWithTransportation(G4bool val, const G4
   }
 }
 void G4HepEmConfig::SetMultipleStepsInMSCWithTransportation(G4bool val) {
+  fDefaultRegionParameters->fIsMultipleStepsInMSCTrans = val;
   for (int i=0; i<fG4HepEmParameters->fNumRegions; ++i)
     fG4HepEmParameters->fParametersPerRegion[i].fIsMultipleStepsInMSCTrans = val;
 }
@@ -181,6 +191,7 @@ void G4HepEmConfig::SetApplyCuts(G4bool val, const G4String& nameRegion) {
   }
 }
 void G4HepEmConfig::SetApplyCuts(G4bool val) {
+  fDefaultRegionParameters->fIsApplyCuts = val;
   for (int i=0; i<fG4HepEmParameters->fNumRegions; ++i)
     fG4HepEmParameters->fParametersPerRegion[i].fIsApplyCuts = val;
 }
@@ -203,6 +214,7 @@ void G4HepEmConfig::SetElectronTrackingCut(G4double val, const G4String& nameReg
   }
 }
 void G4HepEmConfig::SetElectronTrackingCut(G4double val) {
+  fDefaultRegionParameters->fElectronTrackingCut = val;
   UpdateRegions();
   for (int i=0; i<fG4HepEmParameters->fNumRegions; ++i)
     fG4HepEmParameters->fParametersPerRegion[i].fElectronTrackingCut = val;
@@ -226,6 +238,7 @@ void G4HepEmConfig::SetGammaTrackingCut(G4double val, const G4String& nameRegion
   }
 }
 void G4HepEmConfig::SetGammaTrackingCut(G4double val) {
+  fDefaultRegionParameters->fGammaTrackingCut = val;
   UpdateRegions();
   for (int i=0; i<fG4HepEmParameters->fNumRegions; ++i)
     fG4HepEmParameters->fParametersPerRegion[i].fGammaTrackingCut = val;
@@ -248,7 +261,7 @@ G4bool G4HepEmConfig::GetTrackingCutsAtStepStart() {
 
 
 void G4HepEmConfig::UpdateRegions() {
-  ExtendHepEmRegionParameters(fG4HepEmParameters);
+  ExtendHepEmRegionParameters(fG4HepEmParameters, fDefaultRegionParameters);
 }
 
 

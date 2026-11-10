@@ -9,6 +9,7 @@
 
 
 struct G4HepEmParameters;
+struct G4HepEmRegionParmeters;
 
 /**
  * @file    G4HepEmConfig.hh
@@ -136,7 +137,8 @@ public:
   G4HepEmParameters* GetG4HepEmParameters() { return fG4HepEmParameters; }
 
   // Extends the per-region parameters to regions created after this configuration
-  // (e.g. by Geant4 VMC after the physics construction). New regions get default values.
+  // (e.g. by Geant4 VMC after the physics construction). New regions get the values
+  // given to the setters for all regions, or the defaults.
   void UpdateRegions();
 
 private:
@@ -149,6 +151,9 @@ private:
   // (mainly from G4EmParameters) but further configurations possible through this
   // G4HepEmConfig (even per detector regions).
   G4HepEmParameters*      fG4HepEmParameters;
+
+  // The per-region parameters given to regions created later.
+  G4HepEmRegionParmeters* fDefaultRegionParameters;
 
   // The list of detector regions that the user requested Woodock-tracking in.
   std::vector<std::string> fWDTRegionNames;

@@ -68,7 +68,8 @@ void InitHepEmRegionParameters(const struct G4HepEmParameters* hepEmPars, struct
   rDat.fGammaTrackingCut    = hepEmPars->fGammaTrackingCut;
 }
 
-bool ExtendHepEmRegionParameters(struct G4HepEmParameters* hepEmPars) {
+bool ExtendHepEmRegionParameters(struct G4HepEmParameters* hepEmPars,
+                                 const struct G4HepEmRegionParmeters* defaults) {
   const int numRegions = G4RegionStore::GetInstance()->size();
   if (numRegions <= hepEmPars->fNumRegions) {
     return false;
@@ -77,6 +78,8 @@ bool ExtendHepEmRegionParameters(struct G4HepEmParameters* hepEmPars) {
   for (int i=0; i<numRegions; ++i) {
     if (i < hepEmPars->fNumRegions) {
       newPars[i] = hepEmPars->fParametersPerRegion[i];
+    } else if (defaults != nullptr) {
+      newPars[i] = *defaults;
     } else {
       InitHepEmRegionParameters(hepEmPars, newPars[i]);
     }
