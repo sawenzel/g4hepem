@@ -47,7 +47,7 @@ void InitHepEmParameters(struct G4HepEmParameters* hepEmPars) {
   }
 }
 
-void InitHepEmRegionParameters(const struct G4HepEmParameters* /*hepEmPars*/, struct G4HepEmRegionParmeters& rDat) {
+void InitHepEmRegionParameters(const struct G4HepEmParameters* hepEmPars, struct G4HepEmRegionParmeters& rDat) {
   // NOTE: these values are hidden inside G4EmParameters::G4EmExtraParameters!!!
   rDat.fFinalRange    = 1.0*CLHEP::mm;
   rDat.fDRoverRange   = 0.2;
@@ -63,6 +63,9 @@ void InitHepEmRegionParameters(const struct G4HepEmParameters* /*hepEmPars*/, st
   rDat.fIsMultipleStepsInMSCTrans = true;
 
   rDat.fIsApplyCuts = G4EmParameters::Instance()->ApplyCuts();
+
+  rDat.fElectronTrackingCut = hepEmPars->fElectronTrackingCut;
+  rDat.fGammaTrackingCut    = hepEmPars->fGammaTrackingCut;
 }
 
 bool ExtendHepEmRegionParameters(struct G4HepEmParameters* hepEmPars,

@@ -204,6 +204,52 @@ G4bool G4HepEmConfig::GetApplyCuts(G4int indxRegion) {
 }
 
 
+void G4HepEmConfig::SetElectronTrackingCut(G4double val, const G4String& nameRegion) {
+  if (nameRegion == "all") {
+    SetElectronTrackingCut(val);
+  } else {
+    // get the index first: it might extend (reallocate) the per-region array
+    const G4int indxRegion = GetRegionIndex(nameRegion);
+    fG4HepEmParameters->fParametersPerRegion[indxRegion].fElectronTrackingCut = val;
+  }
+}
+void G4HepEmConfig::SetElectronTrackingCut(G4double val) {
+  fDefaultRegionParameters->fElectronTrackingCut = val;
+  for (int i=0; i<fG4HepEmParameters->fNumRegions; ++i)
+    fG4HepEmParameters->fParametersPerRegion[i].fElectronTrackingCut = val;
+}
+G4double G4HepEmConfig::GetElectronTrackingCut(const G4String& nameRegion) {
+  return GetElectronTrackingCut(GetRegionIndex(nameRegion));
+}
+G4double G4HepEmConfig::GetElectronTrackingCut(G4int indxRegion) {
+  CheckRegionIndex(indxRegion);
+  return fG4HepEmParameters->fParametersPerRegion[indxRegion].fElectronTrackingCut;
+}
+
+
+void G4HepEmConfig::SetGammaTrackingCut(G4double val, const G4String& nameRegion) {
+  if (nameRegion == "all") {
+    SetGammaTrackingCut(val);
+  } else {
+    // get the index first: it might extend (reallocate) the per-region array
+    const G4int indxRegion = GetRegionIndex(nameRegion);
+    fG4HepEmParameters->fParametersPerRegion[indxRegion].fGammaTrackingCut = val;
+  }
+}
+void G4HepEmConfig::SetGammaTrackingCut(G4double val) {
+  fDefaultRegionParameters->fGammaTrackingCut = val;
+  for (int i=0; i<fG4HepEmParameters->fNumRegions; ++i)
+    fG4HepEmParameters->fParametersPerRegion[i].fGammaTrackingCut = val;
+}
+G4double G4HepEmConfig::GetGammaTrackingCut(const G4String& nameRegion) {
+  return GetGammaTrackingCut(GetRegionIndex(nameRegion));
+}
+G4double G4HepEmConfig::GetGammaTrackingCut(G4int indxRegion) {
+  CheckRegionIndex(indxRegion);
+  return fG4HepEmParameters->fParametersPerRegion[indxRegion].fGammaTrackingCut;
+}
+
+
 void G4HepEmConfig::UpdateRegions() {
   ExtendHepEmRegionParameters(fG4HepEmParameters, *fDefaultRegionParameters);
 }
@@ -288,7 +334,8 @@ void G4HepEmConfig::Dump() {
 
   std::vector<G4String> names = {" FinalRange (mm)", " DRoverRange", " Energy loss fluctuation",
         " MSC Range factor",  " MSC Safety factor", " MSC minimal step limit",
-        " Multiple steps in MSC+Trans.", " Woodcock-tracking (explicit)", " Apply cuts"};
+        " Multiple steps in MSC+Trans.", " Woodcock-tracking (explicit)", " Apply cuts",
+        " e-/e+ tracking cut (keV)", " Gamma tracking cut (keV)"};
   const int numParams  = names.size();
 
   for (int ip=0; ip<numParams; ++ip) {
@@ -327,6 +374,10 @@ void G4HepEmConfig::Dump() {
         case 7: std::cout << isWDT << " | ";
                 break;
         case 8: std::cout << fG4HepEmParameters->fParametersPerRegion[ir].fIsApplyCuts << " | ";
+                break;
+        case 9: std::cout << fG4HepEmParameters->fParametersPerRegion[ir].fElectronTrackingCut/CLHEP::keV << " | ";
+                break;
+        case 10: std::cout << fG4HepEmParameters->fParametersPerRegion[ir].fGammaTrackingCut/CLHEP::keV << " | ";
                 break;
 
       }
