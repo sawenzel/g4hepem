@@ -250,6 +250,14 @@ G4double G4HepEmConfig::GetGammaTrackingCut(G4int indxRegion) {
 }
 
 
+void G4HepEmConfig::SetTrackingCutsAtStepStart(G4bool val) {
+  fG4HepEmParameters->fIsTrackingCutAtStepStart = val;
+}
+G4bool G4HepEmConfig::GetTrackingCutsAtStepStart() {
+  return fG4HepEmParameters->fIsTrackingCutAtStepStart;
+}
+
+
 void G4HepEmConfig::UpdateRegions() {
   ExtendHepEmRegionParameters(fG4HepEmParameters, *fDefaultRegionParameters);
 }
@@ -318,7 +326,11 @@ void G4HepEmConfig::Dump() {
   std::cout << std::left << std::setw(width) << " Linear loss limit " << " : "
             << std::setw(5) << std::right
             << fG4HepEmParameters->fParametersPerRegion[0].fLinELossLimit*100
-            << " [%] " << std::endl << std::endl;
+            << " [%] " << std::endl;
+  std::cout << std::left << std::setw(width) << " Tracking cuts at step start " << " : "
+            << std::setw(5) << std::right
+            << fG4HepEmParameters->fIsTrackingCutAtStepStart
+            << " (true/false) "<< std::endl << std::endl;
   std::cout << " REGION BASED Parameters: " << std::endl;
   std::cout << " --------------------------------------------------------------  " << std::endl;
   std::cout << std::left << std::setw(width) << " Parameter for region " << " : ";

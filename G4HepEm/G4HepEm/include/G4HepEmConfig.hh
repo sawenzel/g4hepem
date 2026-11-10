@@ -121,6 +121,14 @@ public:
   G4double GetGammaTrackingCut(const G4String& nameRegion);
   G4double GetGammaTrackingCut(int indxRegion);
 
+  // Also apply the tracking cuts at the start of each step (default: false), i.e.
+  // stop a track at or below the cut of its current region in a zero-length step,
+  // as `G4UserSpecialCuts` does (newborn secondaries, tracks entering a region
+  // with a higher cut). Otherwise the cuts are applied only after the energy loss
+  // (e-/e+) or the interaction (gamma) of a step.
+  void   SetTrackingCutsAtStepStart(G4bool val);
+  G4bool GetTrackingCutsAtStepStart();
+
 
   // NOTE: to see if we set its memebr Parameters or it will have its own
   void SetG4HepEmParameters(G4HepEmParameters* hepEmPars) {

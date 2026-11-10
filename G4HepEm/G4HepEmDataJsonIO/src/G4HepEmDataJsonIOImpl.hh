@@ -189,6 +189,7 @@ namespace nlohmann
         j["fElectronBremModelLim"] = d->fElectronBremModelLim;
         j["fIsMSCPositronCor"]     = d->fIsMSCPositronCor;
         j["fIsMSCDisplacement"]    = d->fIsMSCDisplacement;
+        j["fIsTrackingCutAtStepStart"] = d->fIsTrackingCutAtStepStart;
         j["fNumRegions"]           = d->fNumRegions;
         j["fParametersPerRegion"]  =
           make_span(d->fNumRegions, d->fParametersPerRegion);
@@ -213,6 +214,8 @@ namespace nlohmann
         d->fElectronBremModelLim = j.at("fElectronBremModelLim").get<double>();
         d->fIsMSCPositronCor     = j.at("fIsMSCPositronCor").get<bool>();
         d->fIsMSCDisplacement    = j.at("fIsMSCDisplacement").get<bool>();
+        // optional, so that data written before this field existed still loads
+        d->fIsTrackingCutAtStepStart = j.value("fIsTrackingCutAtStepStart", false);
         d->fNumRegions           = j.at("fNumRegions").get<int>();
 
         d->fParametersPerRegion  = new G4HepEmRegionParmeters[d->fNumRegions];

@@ -13,6 +13,7 @@ class G4SafetyHelper;
 class G4Step;
 class G4VProcess;
 class G4VParticleChange;
+class G4VTrajectory;
 class G4Region;
 class G4HepEmWoodcockHelper;
 class G4HepEmConfig;
@@ -109,6 +110,13 @@ private:
                             const G4VProcess* aG4CreatorProcess, int aG4IMC,
                             bool isApplyCuts);
 
+  // Stops the track in a zero-length step at its current position, depositing
+  // its kinetic energy (e+ annihilates at rest), and invokes the SD and the
+  // stepping actions. Used when the track is at or below the tracking cut of its
+  // region at the start of a step.
+  void StopAtTrackingCut(G4Track* aTrack, int g4IMC, bool isApplyCuts,
+                         bool isPositron, G4VTrajectory* theTrajectory);
+
   void InitNuclearProcesses(int particleID);
 
   // Checks if the particles has fast simulation maanger process attached and
@@ -154,6 +162,8 @@ private:
   std::vector<G4HepEmNoProcess *> fElectronNoProcessVector;
   std::vector<G4HepEmNoProcess *> fGammaNoProcessVector;
   G4HepEmNoProcess* fTransportNoProcess;
+  // Process set when a step is limited by the tracking cut at the step start
+  G4HepEmNoProcess* fTrackingCutNoProcess;
 
   // Pointers to the Gamma-nuclear process (if any)
   G4VProcess* fGNucProcess;
