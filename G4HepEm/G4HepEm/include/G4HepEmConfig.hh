@@ -106,12 +106,38 @@ public:
   G4bool GetApplyCuts(const G4String& nameRegion);
   G4bool GetApplyCuts(int indxRegion);
 
+  // Set the e-/e+ tracking (kinetic) energy cut everywhere or in a given detector
+  // region (default: G4EmParameters::LowestElectronEnergy). Unlike
+  // `/process/em/lowestElectronEnergy`, it does not change the e- production threshold.
+  void     SetElectronTrackingCut(G4double val, const G4String& nameRegion);
+  void     SetElectronTrackingCut(G4double val);
+  G4double GetElectronTrackingCut(const G4String& nameRegion);
+  G4double GetElectronTrackingCut(int indxRegion);
+
+  // Set the gamma tracking energy cut everywhere or in a given detector region (default: 0)
+  void     SetGammaTrackingCut(G4double val, const G4String& nameRegion);
+  void     SetGammaTrackingCut(G4double val);
+  G4double GetGammaTrackingCut(const G4String& nameRegion);
+  G4double GetGammaTrackingCut(int indxRegion);
+
+  // Also apply the tracking cuts at the start of each step (default: false), i.e.
+  // stop a track at or below the cut of its current region in a zero-length step,
+  // as `G4UserSpecialCuts` does (newborn secondaries, tracks entering a region
+  // with a higher cut). Otherwise the cuts are applied only after the energy loss
+  // (e-/e+) or the interaction (gamma) of a step.
+  void   SetTrackingCutsAtStepStart(G4bool val);
+  G4bool GetTrackingCutsAtStepStart();
+
 
   // NOTE: to see if we set its memebr Parameters or it will have its own
   void SetG4HepEmParameters(G4HepEmParameters* hepEmPars) {
     fG4HepEmParameters = hepEmPars;
   }
   G4HepEmParameters* GetG4HepEmParameters() { return fG4HepEmParameters; }
+
+  // Extends the per-region parameters to regions created after this configuration
+  // (e.g. by Geant4 VMC after the physics construction). New regions get default values.
+  void UpdateRegions();
 
 private:
   G4int GetRegionIndex(const G4String& nameRegion);

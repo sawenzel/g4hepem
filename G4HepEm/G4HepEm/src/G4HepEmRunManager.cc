@@ -73,6 +73,8 @@ void G4HepEmRunManager::InitializeGlobal(G4HepEmParameters* hepEmPars) {
     if (hepEmPars != nullptr) {
       fTheG4HepEmParameters = hepEmPars;
       fExternalParameters   = true;
+      // regions might have been added since the parameters were created
+      ExtendHepEmRegionParameters(fTheG4HepEmParameters);
     } else {
       fTheG4HepEmParameters = new G4HepEmParameters();
       InitHepEmParameters(fTheG4HepEmParameters);

@@ -99,6 +99,9 @@ G4HepEmTrackingManager::G4HepEmTrackingManager(G4int verbose) {
   fTransportNoProcess = new G4HepEmNoProcess(
       "Transportation", G4ProcessType::fTransportation, TRANSPORTATION);
 
+  fTrackingCutNoProcess = new G4HepEmNoProcess(
+      "hepEmTrackingCut", G4ProcessType::fGeneral, USER_SPECIAL_CUTS);
+
   // Init the gamma-nuclear process
   fGNucProcess = nullptr;
   // Init the electron/positron-nuclear processes
@@ -435,6 +438,17 @@ bool G4HepEmTrackingManager::TrackElectron(G4Track *aTrack) {
     const int hepEmIMC =
         theHepEmData->fTheMatCutData->fG4MCIndexToHepEmMCIndex[g4IMC];
     thePrimaryTrack->SetMCIndex(hepEmIMC);
+
+    const int indxRegion  = lvol->GetRegion()->GetInstanceID();
+    bool  isApplyCuts = theHepEmPars->fParametersPerRegion[indxRegion].fIsApplyCuts;
+
+    // Stop here if at or below the tracking cut of this region (optional).
+    if (theHepEmPars->fIsTrackingCutAtStepStart &&
+        preStepEkin <= theHepEmPars->fParametersPerRegion[indxRegion].fElectronTrackingCut) {
+      StopAtTrackingCut(aTrack, g4IMC, isApplyCuts, !isElectron, theTrajectory);
+      continue;
+    }
+
     bool preStepOnBoundary =
         preStepPoint.GetStepStatus() == G4StepStatus::fGeomBoundary;
     thePrimaryTrack->SetOnBoundary(preStepOnBoundary);
@@ -443,8 +457,6 @@ bool G4HepEmTrackingManager::TrackElectron(G4Track *aTrack) {
                    : fSafetyHelper->ComputeSafety(aTrack->GetPosition());
     thePrimaryTrack->SetSafety(preSafety);
 
-    const int indxRegion  = lvol->GetRegion()->GetInstanceID();
-    bool  isApplyCuts = theHepEmPars->fParametersPerRegion[indxRegion].fIsApplyCuts;
     bool  continueStepping = theHepEmPars->fParametersPerRegion[indxRegion].fIsMultipleStepsInMSCTrans;
 
     // Sample the `number-of-interaction-left`
@@ -994,6 +1006,13 @@ bool G4HepEmTrackingManager::TrackGamma(G4Track *aTrack) {
       continue;
     }
 
+    // Stop here if at or below the tracking cut of this region (optional).
+    if (theHepEmPars->fIsTrackingCutAtStepStart &&
+        theG4DPart->GetKineticEnergy() <= theHepEmPars->fParametersPerRegion[lvol->GetRegion()->GetInstanceID()].fGammaTrackingCut) {
+      StopAtTrackingCut(aTrack, MCC->GetIndex(), false, false, theTrajectory);
+      continue;
+    }
+
     // If any Woodcock tracking region was found at initialization and the gamma
     // is not already under Woodcock tracking, then check:
     // - this step will be done in one of the Woodcock tracking regions with
@@ -1257,6 +1276,51 @@ double G4HepEmTrackingManager::PerformNuclear(G4Track* aG4Track, G4Step* theG4St
 
 // Helper that can be used to stack secondary e-/e+ and gamma i.e. everything
 // that HepEm physics can produce
+void G4HepEmTrackingManager::StopAtTrackingCut(G4Track* aTrack, int g4IMC, bool isApplyCuts,
+                                               bool isPositron, G4VTrajectory* theTrajectory) {
+  G4Step&      step          = *fStep;
+  G4StepPoint& postStepPoint = *step.GetPostStepPoint();
+
+  double edep = aTrack->GetKineticEnergy();
+  const G4VProcess* proc = fTrackingCutNoProcess;
+  if (isPositron) {
+    // annihilation at rest (the two gammas are stacked below)
+    G4HepEmPositronInteractionAnnihilation::Perform(fRunManager->GetTheTLData(), true);
+    proc = fElectronNoProcessVector[2];
+  }
+  step.SetStepLength(0.0);
+  postStepPoint.SetStepStatus(fPostStepDoItProc);
+  postStepPoint.SetProcessDefinedStep(proc);
+  postStepPoint.SetKineticEnergy(0.0);
+  aTrack->SetTrackStatus(fStopAndKill);
+  step.UpdateTrack();
+
+  edep += StackSecondaries(fRunManager->GetTheTLData(), aTrack, proc, g4IMC, isApplyCuts);
+  step.AddTotalEnergyDeposit(edep);
+
+  // End of this step: call the SD and stepping actions.
+  auto* lvol = aTrack->GetTouchable()->GetVolume()->GetLogicalVolume();
+  if (step.GetControlFlag() != AvoidHitInvocation) {
+    auto* sensitive = lvol->GetSensitiveDetector();
+    if (sensitive) {
+      sensitive->Hit(&step);
+    }
+  }
+  auto* userSteppingAction = G4EventManager::GetEventManager()->GetUserSteppingAction();
+  if (userSteppingAction) {
+    userSteppingAction->UserSteppingAction(&step);
+  }
+  auto* regionalAction = lvol->GetRegion()->GetRegionalSteppingAction();
+  if (regionalAction) {
+    regionalAction->UserSteppingAction(&step);
+  }
+  if (theTrajectory != nullptr) {
+    theTrajectory->AppendStep(&step);
+  }
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
 double G4HepEmTrackingManager::StackSecondaries(G4HepEmTLData* aTLData, G4Track* aG4PrimaryTrack, const G4VProcess* aG4CreatorProcess, int aG4IMC, bool isApplyCuts) {
   const int numSecElectron = aTLData->GetNumSecondaryElectronTrack();
   const int numSecGamma    = aTLData->GetNumSecondaryGammaTrack();
