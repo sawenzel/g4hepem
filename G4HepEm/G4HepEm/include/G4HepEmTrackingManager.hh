@@ -119,6 +119,10 @@ private:
 
   void InitNuclearProcesses(int particleID);
 
+  // Finds the step limiter process (G4StepLimiter) of e- (0) or e+ (1), if any.
+  // If attached, the e-/e+ step is limited by the G4UserLimits of the volume.
+  void InitStepLimiter(int particleID);
+
   // Checks if the particles has fast simulation maanger process attached and
   // stores in the local `fFastSimProcess` array (indexed by HepEm particle ID)
   void InitFastSimRelated(int particleID);
@@ -171,6 +175,9 @@ private:
   // Pointers to the Electron/Positron-nuclear processes (if any)
   G4VProcess* fENucProcess;
   G4VProcess* fPNucProcess;
+
+  // Pointers to the step limiter processes of e- and e+ (if any)
+  G4VProcess* fStepLimiterProcess[2];
 
   // ATLAS XTR RELATED:
   // Fields to store ptrs to the ATLAS XTR (transition radiation) process and

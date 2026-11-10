@@ -56,6 +56,9 @@ G4double ElectronVelocity(G4double ekin) {
 #include "G4HadronicProcess.hh"
 #include "G4ProcessType.hh"
 #include "G4TransportationProcessType.hh"
+#include "G4UserLimits.hh"
+#include "G4Positron.hh"
+#include "G4ProcessManager.hh"
 
 #include "G4RegionStore.hh"
 
@@ -120,6 +123,9 @@ G4HepEmTrackingManager::G4HepEmTrackingManager(G4int verbose) {
   // Init the electron/positron-nuclear processes
   fENucProcess = nullptr;
   fPNucProcess = nullptr;
+  // Init the step limiter processes of e-/e+
+  fStepLimiterProcess[0] = nullptr;
+  fStepLimiterProcess[1] = nullptr;
 
   // Init the fast sim mamanger process ptrs of the 3 particles
   fFastSimProcess[0] = nullptr;
@@ -194,6 +200,8 @@ void G4HepEmTrackingManager::BuildPhysicsTable(const G4ParticleDefinition &part)
     fRunManager->Initialize(fRandomEngine, particleID, fConfig->GetG4HepEmParameters());
     // Find the electron-nuclear process if has been attached
     InitNuclearProcesses(particleID);
+    // Find the step limiter process if has been attached
+    InitStepLimiter(particleID);
     // Find the fast simulation manager process for e- (if has been attached)
     InitFastSimRelated(particleID);
     // Find the ATLAS specific trans. rad. (XTR) process (if has been attached)
@@ -208,6 +216,8 @@ void G4HepEmTrackingManager::BuildPhysicsTable(const G4ParticleDefinition &part)
     fRunManager->Initialize(fRandomEngine, particleID, fConfig->GetG4HepEmParameters());
     // Find the positron-nuclear process if has been attached
     InitNuclearProcesses(particleID);
+    // Find the step limiter process if has been attached
+    InitStepLimiter(particleID);
     // Find the fast simulation manager process for e+ (if has been attached)
     InitFastSimRelated(particleID);
     // Report extra process configuration
@@ -483,6 +493,21 @@ bool G4HepEmTrackingManager::TrackElectron(G4Track *aTrack) {
     }
     // True distance to discrete interaction.
     G4HepEmElectronManager::HowFarToDiscreteInteraction(theHepEmData, theHepEmPars, theElTrack);
+    // Limit the step by the user limits (if a step limiter is attached); no
+    // discrete interaction happens in such a step (winner process index -3).
+    const G4VProcess* limitingProc = nullptr;
+    {
+      const G4VProcess* stepLimiter = fStepLimiterProcess[isElectron ? 0 : 1];
+      G4UserLimits* userLimits = lvol->GetUserLimits();
+      if (stepLimiter != nullptr && userLimits != nullptr) {
+        const double maxStep = userLimits->GetMaxAllowedStep(*aTrack);
+        if (maxStep < theElTrack->GetPStepLength()) {
+          theElTrack->SetPStepLength(maxStep);
+          thePrimaryTrack->SetWinnerProcessIndex(-3);
+          limitingProc = stepLimiter;
+        }
+      }
+    }
     // Remember which process was selected - MSC might limit the sub-steps.
     const int iDProc = thePrimaryTrack->GetWinnerProcessIndex();
 
@@ -695,6 +720,9 @@ bool G4HepEmTrackingManager::TrackElectron(G4Track *aTrack) {
         if (iDProc == -1) {
           // ionization
           proc = fElectronNoProcessVector[0];
+        } else if (iDProc == -3) {
+          // step limiter (or Cerenkov)
+          proc = limitingProc;
         } else if (iDProc == -2) {
           proc = fElectronNoProcessVector[3];
         } else {
@@ -1514,6 +1542,20 @@ void G4HepEmTrackingManager::InitNuclearProcesses(int particleID) {
         (*proc)->BuildPhysicsTable(*particleDef);
         break;
       }
+    }
+  }
+}
+
+
+// Try to get the step limiter process for e- (0) or e+ (1)
+void G4HepEmTrackingManager::InitStepLimiter(int particleID) {
+  G4ParticleDefinition* particleDef = particleID == 0 ? static_cast<G4ParticleDefinition*>(G4Electron::Definition()) : G4Positron::Definition();
+  fStepLimiterProcess[particleID] = nullptr;
+  const G4ProcessVector* processVector = particleDef->GetProcessManager()->GetProcessList();
+  for (std::size_t ip=0; ip<processVector->entries(); ip++) {
+    if ((*processVector)[ip]->GetProcessSubType() == STEP_LIMITER) {
+      fStepLimiterProcess[particleID] = (*processVector)[ip];
+      break;
     }
   }
 }
