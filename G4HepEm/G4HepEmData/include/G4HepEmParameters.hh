@@ -46,6 +46,13 @@ struct G4HepEmRegionParmeters {
 
   /** Apply secondary production threshold on all interactions (beyond ioni. and brem.) */
   bool   fIsApplyCuts = true;
+
+  /** \f$e^-/e^+\f$ tracking (kinetic) energy cut in this region (Geant4 internal energy units).
+    * Defaults to the global `G4HepEmParameters::fElectronTrackingCut`. */
+  double fElectronTrackingCut = 0.001;
+  /** \f$\gamma\f$ tracking (energy) cut in this region (Geant4 internal energy units).
+    * Defaults to the global `G4HepEmParameters::fGammaTrackingCut`. */
+  double fGammaTrackingCut = 0.0;
 };
 
 
@@ -53,12 +60,19 @@ struct G4HepEmParameters {
   /** \f$e^-/e^+\f$ tracking (kinetic) energy cut in Geant4 internal energy units:
     * \f$e^-/e^+\f$ tracks are stopped when their energy drops below this threshold,
     * their kinetic energy is deposited and annihilation to two \f$\gamma\f$-s interaction
-    * is invoked in case of \f$e^+\f$.*/
+    * is invoked in case of \f$e^+\f$.
+    * At run time the per-region value `G4HepEmRegionParmeters::fElectronTrackingCut` is
+    * used. This global value is the default of the regions, taken when the configuration
+    * is created (later changes do not reach the regions), and the lower limit of the e-
+    * production threshold. */
   double fElectronTrackingCut = 0.001;
 
   /** \f$\gamma\f$ tracking (energy) cut in Geant4 internal energy units:
     * \f$\gamma\f$ tracks are stopped when their energy drops below this threshold,
-    * and their kinetic energy is deposited. */
+    * and their kinetic energy is deposited.
+    * At run time the per-region value `G4HepEmRegionParmeters::fGammaTrackingCut` is
+    * used. This global value is the default of the regions, taken when the configuration
+    * is created (later changes do not reach the regions). */
   double fGammaTrackingCut = 0.0;
 
   // The configuration of the kinetic energy grid of the energy loss related tables:

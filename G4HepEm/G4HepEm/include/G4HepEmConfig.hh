@@ -107,6 +107,20 @@ public:
   G4bool GetApplyCuts(const G4String& nameRegion);
   G4bool GetApplyCuts(int indxRegion);
 
+  // Set the e-/e+ tracking (kinetic) energy cut everywhere or in a given detector
+  // region (default: G4EmParameters::LowestElectronEnergy). Unlike
+  // `/process/em/lowestElectronEnergy`, it does not change the e- production threshold.
+  void     SetElectronTrackingCut(G4double val, const G4String& nameRegion);
+  void     SetElectronTrackingCut(G4double val);
+  G4double GetElectronTrackingCut(const G4String& nameRegion);
+  G4double GetElectronTrackingCut(int indxRegion);
+
+  // Set the gamma tracking energy cut everywhere or in a given detector region (default: 0)
+  void     SetGammaTrackingCut(G4double val, const G4String& nameRegion);
+  void     SetGammaTrackingCut(G4double val);
+  G4double GetGammaTrackingCut(const G4String& nameRegion);
+  G4double GetGammaTrackingCut(int indxRegion);
+
 
   // NOTE: to see if we set its memebr Parameters or it will have its own
   void SetG4HepEmParameters(G4HepEmParameters* hepEmPars) {
