@@ -1571,6 +1571,12 @@ void G4HepEmTrackingManager::InitNuclearProcesses(int particleID) {
   const G4ProcessVector* processVector = particleDef->GetProcessManager()->GetProcessList();
   for (std::size_t ip=0; ip<processVector->entries(); ip++) {
     if( (*processVector)[ip]->GetProcessName()==G4String(nameNuclearProcess)) {
+      // an inactivated process is not used
+      if (!particleDef->GetProcessManager()->GetProcessActivation((G4int)ip)) {
+        std::cout << " --- G4HepEmTrackingManager: " << nameNuclearProcess
+                  << " is inactive and not used" << std::endl;
+        break;
+      }
       *proc = (*processVector)[ip];
       // make sure the process is initialised (element selectors needs to be built)
       (*proc)->PreparePhysicsTable(*particleDef);
