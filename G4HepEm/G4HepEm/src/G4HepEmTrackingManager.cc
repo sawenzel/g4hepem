@@ -74,6 +74,16 @@ G4double ElectronVelocity(G4double ekin) {
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+namespace {
+// A nuclear process is used only while it is active: the application can
+// inactivate it after the tables are built (eg. on the worker threads)
+G4bool IsActive(const G4ParticleDefinition* particleDef, G4VProcess* process) {
+  const G4ProcessManager* processManager = particleDef->GetProcessManager();
+  const G4int index = processManager->GetProcessIndex(process);
+  return index < 0 || processManager->GetProcessActivation(index);
+}
+}  // namespace
+
 G4HepEmTrackingManager::G4HepEmTrackingManager(G4int verbose) {
   fRunManager = new G4HepEmRunManager(G4Threading::IsMasterThread());
   fRandomEngine = new G4HepEmRandomEngine(G4Random::getTheEngine());
@@ -771,7 +781,8 @@ bool G4HepEmTrackingManager::TrackElectron(G4Track *aTrack) {
         thePrimaryTrack->SetNumIALeft(-1.0, iDProc);
         // check if there is nuclear interaction process and not delta interaction happens
         G4VProcess* theNucProcess = isElectron ? fENucProcess : fPNucProcess;
-        if (theNucProcess != nullptr && !G4HepEmElectronManager::CheckDelta(theHepEmData, thePrimaryTrack, theTLData->GetRNGEngine()->flat())) {
+        if (theNucProcess != nullptr && IsActive(aTrack->GetDefinition(), theNucProcess) &&
+            !G4HepEmElectronManager::CheckDelta(theHepEmData, thePrimaryTrack, theTLData->GetRNGEngine()->flat())) {
           // After displacement and deflection via MSC and the continuous energy loss,
           // the updated position, direction, and energy must be stored in the G4Track,
           // as the track's data is used in the PostStepDoIt of the nuclear reaction.
@@ -1243,7 +1254,7 @@ bool G4HepEmTrackingManager::TrackGamma(G4Track *aTrack) {
           // NOTE: it's destructive i.e. stopps and kills the gammma when the
           //    interaction happens.
           thePrimaryTrack->SetEnergyDeposit(0.0);
-          if (fGNucProcess != nullptr) {
+          if (fGNucProcess != nullptr && IsActive(G4Gamma::Definition(), fGNucProcess)) {
             // Invoke the gamma-nuclear interaction using the Geant4 process
             // (step is updated and secondaries are stacked to the vector of the step)
             const int partileID = 2;
